@@ -1,0 +1,504 @@
+import warnings
+warnings.filterwarnings('ignore')
+
+# importing required libraries
+import numpy as np
+import pandas as pd
+import pickle # saving and loading trained model
+from os import path
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn import metrics
+from sklearn.metrics import accuracy_score # for calculating accuracy of model
+from sklearn.model_selection import train_test_split # for splitting the dataset for training and testing
+from sklearn.metrics import classification_report # for generating a classification report of model
+
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import f1_score
+
+from sklearn.metrics import roc_auc_score
+
+train_data = pd.read_csv('data/oasis_longitudinal.csv')
+
+train_data.head()
+
+del train_data['Subject ID']
+del train_data['MRI ID']
+
+train_data.info()
+
+train_data = train_data.dropna()
+
+train_data.info()
+
+# number of attack labels 
+train_data['M/F'].value_counts()
+
+# number of attack labels 
+train_data['Group'].value_counts()
+
+# number of attack labels 
+train_data['Hand'].value_counts()
+
+train_data.to_csv('processed.csv')
+
+labels = train_data['Group'].value_counts().index
+sizes = train_data['Group'].value_counts().values
+
+plt.figure(figsize=(5, 5))
+plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
+plt.axis('equal') 
+plt.title('Class Distribution')
+plt.show()
+
+fig,ax=plt.subplots(1,1,figsize=(14,7))
+sns.heatmap(train_data.corr(), square=True, center=0.5, yticklabels=False).set_title('Correlation Matrix')
+
+# Import label encoder
+from sklearn import preprocessing
+
+# label_encoder object knows
+# how to understand word labels.
+label_encoder = preprocessing.LabelEncoder()
+
+# Encode labels in column 'species'.
+train_data['Group']= label_encoder.fit_transform(train_data['Group'])
+train_data['M/F']= label_encoder.fit_transform(train_data['M/F'])
+train_data['Hand']= label_encoder.fit_transform(train_data['Hand'])
+
+train_data['Group'].unique()
+train_data['M/F'].unique()
+train_data['Hand'].unique()
+
+X = train_data.drop(["Group"],axis =1)
+y = train_data["Group"]
+
+X.columns
+
+# splitting the dataset 80% for training and 20% testing
+X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.20, random_state=42)
+
+X_train.shape
+
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+ML_Model = []
+accuracy = []
+precision = []
+recall = []
+f1score = []
+
+
+#function to call for storing the results
+def storeResults(model, a,b,c,d):
+    ML_Model.append(model)
+    accuracy.append(round(a, 3))
+    precision.append(round(b, 3))
+    recall.append(round(c, 3))
+    f1score.append(round(d, 3))
+
+from sklearn.neighbors import NeighborhoodComponentsAnalysis
+
+nca = NeighborhoodComponentsAnalysis(random_state=42)
+nca.fit(X, y)
+
+from sklearn.neighbors import KNeighborsClassifier
+
+# instantiate the model 
+knn = KNeighborsClassifier(n_neighbors=3)
+
+knn.fit(X,y)
+
+y_pred = knn.predict(X)
+
+knn_acc = accuracy_score(y_pred, y)
+knn_prec = precision_score(y_pred, y,average='weighted')
+knn_rec = recall_score(y_pred, y,average='weighted')
+knn_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('KNN',knn_acc,knn_prec,knn_rec,knn_f1)
+
+knn_nca = KNeighborsClassifier(n_neighbors=3)
+knn_nca.fit(nca.transform(X), y)
+
+y_pred = knn_nca.predict(nca.transform(X))
+
+knn1_acc = accuracy_score(y_pred, y)
+knn1_prec = precision_score(y_pred, y,average='weighted')
+knn1_rec = recall_score(y_pred, y,average='weighted')
+knn1_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('KNN-NCA',knn1_acc,knn1_prec,knn1_rec,knn1_f1)
+
+from sklearn.tree import DecisionTreeClassifier
+
+# instantiate the model 
+tree = DecisionTreeClassifier(random_state=10)
+
+tree.fit(X,y)
+
+y_pred = tree.predict(X)
+
+dt_acc = accuracy_score(y_pred, y)
+dt_prec = precision_score(y_pred, y,average='weighted')
+dt_rec = recall_score(y_pred, y,average='weighted')
+dt_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('Decision Tree',dt_acc,dt_prec,dt_rec,dt_f1)
+
+tree_nca = DecisionTreeClassifier(random_state=10)
+tree_nca.fit(nca.transform(X), y)
+
+y_pred = tree_nca.predict(nca.transform(X))
+
+dt1_acc = accuracy_score(y_pred, y)
+dt1_prec = precision_score(y_pred, y,average='weighted')
+dt1_rec = recall_score(y_pred, y,average='weighted')
+dt1_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('Decision Tree - NCA',dt1_acc,dt1_prec,dt1_rec,dt1_f1)
+
+from sklearn.ensemble import RandomForestClassifier
+
+# instantiate the model 
+forest = RandomForestClassifier(max_depth=2, random_state=0)
+
+forest.fit(X,y)
+
+y_pred = forest.predict(X)
+
+rf_acc = accuracy_score(y_pred, y)
+rf_prec = precision_score(y_pred, y,average='weighted')
+rf_rec = recall_score(y_pred, y,average='weighted')
+rf_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('Random Forest',rf_acc,rf_prec,rf_rec,rf_f1)
+
+forest_nca = RandomForestClassifier(max_depth=2, random_state=0)
+forest_nca.fit(nca.transform(X), y)
+
+y_pred = forest_nca.predict(nca.transform(X))
+
+rf1_acc = accuracy_score(y_pred, y)
+rf1_prec = precision_score(y_pred, y,average='weighted')
+rf1_rec = recall_score(y_pred, y,average='weighted')
+rf1_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('Random Forest - NCA',rf1_acc,rf1_prec,rf1_rec,rf1_f1)
+
+from sklearn.linear_model import LogisticRegression
+
+# instantiate the model 
+lr = LogisticRegression(random_state=0)
+
+lr.fit(X,y)
+
+y_pred = lr.predict(X)
+
+lr_acc = accuracy_score(y_pred, y)
+lr_prec = precision_score(y_pred, y,average='weighted')
+lr_rec = recall_score(y_pred, y,average='weighted')
+lr_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('Logistic Regression',lr_acc,lr_prec,lr_rec,lr_f1)
+
+lr_nca = RandomForestClassifier(max_depth=2, random_state=0)
+lr_nca.fit(nca.transform(X), y)
+
+y_pred = lr_nca.predict(nca.transform(X))
+
+lr1_acc = accuracy_score(y_pred, y)
+lr1_prec = precision_score(y_pred, y,average='weighted')
+lr1_rec = recall_score(y_pred, y,average='weighted')
+lr1_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('Logistic Regression - NCA',lr1_acc,lr1_prec,lr1_rec,lr1_f1)
+
+from sklearn.ensemble import AdaBoostClassifier
+
+# instantiate the model 
+ada = AdaBoostClassifier(n_estimators=100, random_state=0)
+
+ada.fit(X,y)
+
+y_pred = ada.predict(X)
+
+ab_acc = accuracy_score(y_pred, y)
+ab_prec = precision_score(y_pred, y,average='weighted')
+ab_rec = recall_score(y_pred, y,average='weighted')
+ab_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('AdaBoost',ab_acc,ab_prec,ab_rec,ab_f1)
+
+ada_nca = AdaBoostClassifier(n_estimators=100, random_state=0)
+ada_nca.fit(nca.transform(X), y)
+
+y_pred = ada_nca.predict(nca.transform(X))
+
+ab1_acc = accuracy_score(y_pred, y)
+ab1_prec = precision_score(y_pred, y,average='weighted')
+ab1_rec = recall_score(y_pred, y,average='weighted')
+ab1_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('AdaBoost - NCA',ab1_acc,ab1_prec,ab1_rec,ab1_f1)
+
+from sklearn.neural_network import MLPClassifier
+
+# instantiate the model 
+mlp = MLPClassifier(random_state=1, max_iter=30)
+
+mlp.fit(X,y)
+
+y_pred = mlp.predict(X)
+
+mlp_acc = accuracy_score(y_pred, y)
+mlp_prec = precision_score(y_pred, y,average='weighted')
+mlp_rec = recall_score(y_pred, y,average='weighted')
+mlp_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('MLP',mlp_acc,mlp_prec,mlp_rec,mlp_f1)
+
+mlp_nca = MLPClassifier(random_state=1, max_iter=30)
+mlp_nca.fit(nca.transform(X), y)
+
+y_pred = mlp_nca.predict(nca.transform(X))
+
+mlp1_acc = accuracy_score(y_pred, y)
+mlp1_prec = precision_score(y_pred, y,average='weighted')
+mlp1_rec = recall_score(y_pred, y,average='weighted')
+mlp1_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('MLP - NCA',mlp1_acc,mlp1_prec,mlp1_rec,mlp1_f1)
+
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier, AdaBoostClassifier
+clf1 = AdaBoostClassifier(n_estimators=100, random_state=0)
+clf2 = RandomForestClassifier(n_estimators=50, random_state=1)
+
+eclf1 = VotingClassifier(estimators=[('ad', clf1), ('rf', clf2)], voting='soft')
+eclf1.fit(X,y)
+
+y_pred = eclf1.predict(X)
+
+vot_acc = accuracy_score(y_pred, y)
+vot_prec = precision_score(y_pred, y,average='weighted')
+vot_rec = recall_score(y_pred, y,average='weighted')
+vot_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('Voting CLassifier',vot_acc,vot_prec,vot_rec,vot_f1)
+
+vot_nca = VotingClassifier(estimators=[('ad', clf1), ('rf', clf2)], voting='soft')
+vot_nca.fit(nca.transform(X), y)
+
+y_pred = vot_nca.predict(nca.transform(X))
+
+vot1_acc = accuracy_score(y_pred, y)
+vot1_prec = precision_score(y_pred, y,average='weighted')
+vot1_rec = recall_score(y_pred, y,average='weighted')
+vot1_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('Voting CLassifier - NCA',vot1_acc,vot1_prec,vot1_rec,vot1_f1)
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
+from lightgbm import LGBMClassifier
+from sklearn.ensemble import StackingClassifier
+
+estimators = [('rf', RandomForestClassifier(n_estimators=10)),('mlp', MLPClassifier(random_state=1, max_iter=30))]
+
+clf = StackingClassifier(estimators=estimators, final_estimator=LGBMClassifier(n_estimators=10))
+clf.fit(X,y)
+
+y_pred = clf.predict(X)
+
+stac_acc = accuracy_score(y_pred, y)
+stac_prec = precision_score(y_pred, y,average='weighted')
+stac_rec = recall_score(y_pred, y,average='weighted')
+stac_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('Stacking CLassifier',stac_acc,stac_prec,stac_rec,stac_f1)
+
+stac_nca = StackingClassifier(estimators=estimators, final_estimator=LGBMClassifier(n_estimators=10))
+stac_nca.fit(nca.transform(X), y)
+
+y_pred = stac_nca.predict(nca.transform(X))
+
+stac1_acc = accuracy_score(y_pred, y)
+stac1_prec = precision_score(y_pred, y,average='weighted')
+stac1_rec = recall_score(y_pred, y,average='weighted')
+stac1_f1 = f1_score(y_pred, y,average='weighted')
+
+storeResults('Stacking CLassifier - NCA',stac1_acc,stac1_prec,stac1_rec,stac1_f1)
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import Flatten
+from tensorflow.keras.layers import Conv1D
+from tensorflow.keras.layers import MaxPooling1D
+
+verbose, epoch, batch_size = 1, 100, 4
+activationFunction='relu'
+
+X_train=X_train.values
+X_test=X_test.values
+
+X_train = X_train.reshape(-1, X_train.shape[1],1)
+X_test = X_test.reshape(-1, X_test.shape[1],1)
+
+Y_train=to_categorical(y_train)
+Y_test=to_categorical(y_test)
+
+def CNN():
+    
+    cnnmodel = Sequential()
+    cnnmodel.add(Conv1D(filters=128, kernel_size=2, activation='relu',input_shape=(X_train.shape[1],X_train.shape[2])))
+    cnnmodel.add(MaxPooling1D(pool_size=2))
+    cnnmodel.add(Dropout(rate=0.2))
+    cnnmodel.add(Flatten())
+    cnnmodel.add(Dense(3, activation='softmax'))
+    cnnmodel.compile(optimizer='adam', loss='categorical_crossentropy',metrics=['accuracy'])
+    cnnmodel.summary()
+    return cnnmodel
+
+cnnmodel = CNN()
+
+modelhistory = cnnmodel.fit(X_train, Y_train, epochs=100, verbose=verbose, validation_split=0.2, batch_size = batch_size)
+
+# Plot of accuracy vs epoch for train and test dataset
+plt.plot(modelhistory.history['accuracy'])
+plt.plot(modelhistory.history['val_accuracy'])
+plt.title("Plot of accuracy vs epoch for train and test dataset")
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.show()
+
+# Plot of loss vs epoch for train and test dataset
+plt.plot(modelhistory.history['loss'])
+plt.plot(modelhistory.history['val_loss'])
+plt.title("Plot of loss vs epoch for train and test dataset")
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper right')
+plt.show()
+
+cnnpredictions = cnnmodel.predict(X_test, verbose=1)
+cnn_predict=np.argmax(cnnpredictions,axis=1)
+
+y_pred = cnnmodel.predict(X_test, verbose=1)
+y_pred = np.argmax(y_pred,axis=1)
+
+#y_prob = cnnmodel.predict_proba(X_test)[:, 1]
+
+cnn_acc = accuracy_score(y_pred, y_test)
+cnn_prec = precision_score(y_pred, y_test,average='weighted')
+cnn_rec = recall_score(y_pred, y_test,average='weighted')
+cnn_f1 = f1_score(y_pred, y_test,average='weighted')
+
+storeResults('CNN',cnn_acc,cnn_prec,cnn_rec,cnn_f1)
+
+import tensorflow as tf
+tf.keras.backend.clear_session()
+
+model_en = tf.keras.models.Sequential([tf.keras.layers.Conv1D(filters=64,kernel_size=5,strides=1,padding="causal",activation="relu",input_shape=(X_train.shape[1],X_train.shape[2])),
+    tf.keras.layers.MaxPooling1D(pool_size=2, strides=1, padding="valid"),
+    tf.keras.layers.Conv1D(filters=32, kernel_size=3, strides=1, padding="causal", activation="relu"),
+    tf.keras.layers.MaxPooling1D(pool_size=2, strides=1, padding="valid"),
+    tf.keras.layers.LSTM(128, return_sequences=True),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Dense(32, activation="relu"),
+    tf.keras.layers.Dropout(0.1),
+    tf.keras.layers.Dense(3)
+])
+
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(5e-4,
+                                                             decay_steps=1000000,
+                                                             decay_rate=0.98,
+                                                             staircase=False)
+
+model_en.compile(loss=tf.keras.losses.MeanSquaredError(),
+              optimizer=tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=0.8),
+              metrics=['acc'])
+model_en.summary()
+
+modelhistory = model_en.fit(X_train, Y_train, epochs=100, verbose=verbose, validation_split=0.2, batch_size = batch_size)
+
+# Plot of accuracy vs epoch for train and test dataset
+plt.plot(modelhistory.history['acc'])
+plt.plot(modelhistory.history['val_acc'])
+plt.title("Plot of accuracy vs epoch for train and test dataset")
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.show()
+
+# Plot of loss vs epoch for train and test dataset
+plt.plot(modelhistory.history['loss'])
+plt.plot(modelhistory.history['val_loss'])
+plt.title("Plot of loss vs epoch for train and test dataset")
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper right')
+plt.show()
+
+y_pred = model_en.predict(X_test, verbose=1)
+y_pred = np.argmax(y_pred,axis=1)
+
+#y_prob = cnnmodel.predict_proba(X_test)[:, 1]
+
+ense_acc = accuracy_score(y_pred, y_test)
+ense_prec = precision_score(y_pred, y_test,average='weighted')
+ense_rec = recall_score(y_pred, y_test,average='weighted')
+ense_f1 = f1_score(y_pred, y_test,average='weighted')
+
+storeResults('CNN + LSTM',ense_acc,ense_prec,ense_rec,ense_f1)
+
+#creating dataframe
+result = pd.DataFrame({ 'ML Model' : ML_Model,
+                        'Accuracy' : accuracy,
+                        'Precision': precision,
+                        'Recall'   : recall,
+                        'F1-Score': f1score
+                      })
+
+result
+
+import joblib
+filename = 'model1.sav'
+filename1 = 'model2.sav'
+joblib.dump(clf, filename)
+joblib.dump(eclf1, filename1)
+
+classifier = ML_Model
+y_pos = np.arange(len(classifier))
+
+import matplotlib.pyplot as plt2
+plt2.barh(y_pos, accuracy, align='center', alpha=0.5,color='blue')
+plt2.yticks(y_pos, classifier)
+plt2.xlabel('Accuracy Score')
+plt2.title('Classification Performance')
+plt2.show()
+
+plt2.barh(y_pos, precision, align='center', alpha=0.5,color='red')
+plt2.yticks(y_pos, classifier)
+plt2.xlabel('Precision Score')
+plt2.title('Classification Performance')
+plt2.show()
+
+plt2.barh(y_pos, recall, align='center', alpha=0.5,color='cyan')
+plt2.yticks(y_pos, classifier)
+plt2.xlabel('Recall Score')
+plt2.title('Classification Performance')
+plt2.show()
+
+plt2.barh(y_pos, f1score, align='center', alpha=0.5,color='magenta')
+plt2.yticks(y_pos, classifier)
+plt2.xlabel('F1 Score')
+plt2.title('Classification Performance')
+plt2.show()
+
